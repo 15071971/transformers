@@ -1,0 +1,45 @@
+pip install pdfplumber pandas openpyxl
+# تحقق من أن الملف موجود
+if not os.path.exists(pdf_path):
+    raise FileNotFoundError(f"الملف {pdf_path} غير موجود!")
+
+# اسم الملف الناتج الافتراضي
+if excel_path is None:
+    base = os.path.splitext(pdf_path)[0]
+    excel_path = base + ".xlsx"
+
+all_tables = []
+with pdfplumber.open(pdf_path) as pdf:
+    for i, page in enumerate(pdf.pages, start=1):
+        tables = page.extract_tables()
+        if not tables:
+            print(f"⚠️ لا توجد جداول في الصفحة {i}")
+            continue
+
+        for table in tables:
+            df = pd.DataFrame(table)
+            df["صفحة"] = i  # إضافة رقم الصفحة
+            all_tables.append(df)
+
+if not all_tables:
+    print("❌ لم يتم العثور على أي جدول في الملف.")
+    return None
+
+# دمج جميع الجداول في ملف Excel واحد (كل جدول في صفحة مختلفة)
+with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:
+    for idx, df in enumerate(all_tables, start=1):
+        sheet_name = f"جدول_{idx}"
+        df.to_excel(writer, index=False, sheet_name=sheet_name)
+
+print(f"✅ تم تحويل الملف بنجاح: {excel_path}")
+return excel_path
+</code>
+
+---
+
+## 💡 الاستخدام
+بعد حفظ الكود في ملف `pdf_to_excel.py`:
+```bash
+python pdf_to_excel.py
+from pdf_to_excel import pdf_to_excel
+pdf_to_excel("ملفى.pdf", "النتيجة.xlsx")
